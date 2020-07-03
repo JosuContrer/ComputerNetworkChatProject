@@ -8,6 +8,10 @@ import java.util.ArrayList;
 
 /**
  * This is a helper class that handles clients with threads
+ * TODO: add another thread that sends a heartbeat to each client
+ * to make sure they are still connected. If not heartbeat is received
+ * then that means the Client disconnected and then we get them off the
+ * connected list.
  */
 public class ClientHandler implements Runnable{
 

@@ -67,7 +67,7 @@ public class Server {
                 //clientConnectedList.add(client);
 
                 // -> Instantiate thread for client
-                t = new Thread(client);
+                t = new Thread(client, clientUsername + " Sever Thread");
                 t.start();
 
             } catch (IOException e){

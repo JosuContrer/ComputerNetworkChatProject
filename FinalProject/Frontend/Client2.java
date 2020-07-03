@@ -17,7 +17,7 @@ import java.util.Scanner;
  * This is done with the use of individual threads: one for
  * receiving and another for sending messages.
  */
-public class Client {
+public class Client2 {
 
     // Class variables
     // ->Client identification elements
@@ -31,7 +31,7 @@ public class Client {
     // ->Client input messages
     Scanner scn = new Scanner(System.in);
 
-    public Client(String userName, Integer serverSocket){
+    public Client2(String userName, Integer serverSocket){
         try {
             this.ip = InetAddress.getLocalHost(); // get the local host IP Address
             this.socketC = new Socket(this.ip, serverSocket); // Create Client socket given ip and server socket
@@ -105,6 +105,6 @@ public class Client {
         System.out.println("Enter username: ");
         Scanner scn = new Scanner(System.in);
         String userName = scn.nextLine();
-        Client c = new Client(userName, 5056);
+        Client2 c = new Client2(userName, 5056);
     }
 }
