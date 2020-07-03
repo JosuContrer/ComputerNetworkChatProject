@@ -31,20 +31,25 @@ public class Client {
     // ->Client input messages
     Scanner scn = new Scanner(System.in);
 
-    public Client(String userName, Integer serverSocket){
-        try {
-            this.ip = InetAddress.getLocalHost(); // get the local host IP Address
-            this.socketC = new Socket(this.ip, serverSocket); // Create Client socket given ip and server socket
-            this.inputC = new DataInputStream(this.socketC.getInputStream());
-            this.outputC = new DataOutputStream(this.socketC.getOutputStream());
-            this.userName = userName;
-            //this.outputC.writeUTF(userName);
-            System.out.println("Welcome " + this.userName);
-        }catch(IOException e){
-            e.printStackTrace();
-        }
+    public Client(String userName, Integer serverSocket) throws Exception {
+        if(userName.length() >= 1) {
+            try {
+                this.ip = InetAddress.getLocalHost(); // get the local host IP Address
+                this.socketC = new Socket(this.ip, serverSocket); // Create Client socket given ip and server socket
+                this.inputC = new DataInputStream(this.socketC.getInputStream());
+                this.outputC = new DataOutputStream(this.socketC.getOutputStream());
+                this.userName = userName;
+                //this.outputC.writeUTF(userName);
+                System.out.println("Welcome " + this.userName);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new IOException("Client cannot connect at the moment");
+            }
 
-        start();
+            start();
+        } else{
+            throw new Exception("not valid username");
+        }
     }
 
     /**
@@ -69,7 +74,9 @@ public class Client {
                             outputC.writeUTF(userName);
                         }
                     } catch (IOException e) {
+                        System.out.println("Client output error disconnected");
                         e.printStackTrace();
+                        return;
                     }
                 }
             }
@@ -88,7 +95,9 @@ public class Client {
                             System.out.println(packet[1]);
                         }
                     } catch (IOException e) {
+                        System.out.println("Client input error disconnected");
                         e.printStackTrace();
+                        return;
                     }
                 }
             }
@@ -101,10 +110,29 @@ public class Client {
         receiveMT.start();
     }
 
+    /**
+     * Closes client sockets and streams
+     */
+    public void close(){
+        try {
+            socketC.close();
+            inputC.close();
+            outputC.close();
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
     public static void main(String[] args){
         System.out.println("Enter username: ");
         Scanner scn = new Scanner(System.in);
         String userName = scn.nextLine();
-        Client c = new Client(userName, 5056);
+        try {
+            Client c = new Client(userName, 5056);
+        }catch (IOException e){
+            e.printStackTrace();
+        }catch (Exception u){ // error with username
+            u.printStackTrace();
+        }
     }
 }

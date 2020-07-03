@@ -1,10 +1,6 @@
 package FinalProject.Frontend;
 
-import com.sun.org.apache.xalan.internal.xsltc.runtime.Node;
 import javafx.application.Application;
-import javafx.beans.value.ObservableValue;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -14,7 +10,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
-import org.junit.Test;
+
+import java.io.IOException;
 
 /**
  * Java 8: because we are using lambda expressions
@@ -22,6 +19,7 @@ import org.junit.Test;
 
 public class ClientGUI extends Application  {
 
+    Client client = null;
     Scene loginS, messageS;
 
     public static void main(String[] args) {
@@ -42,7 +40,7 @@ public class ClientGUI extends Application  {
         Button buttonLogin = new Button("Login");
         buttonLogin.setId("buttonLogin");
         // TODO: Add verification with the server to see if username has already been taken
-        buttonLogin.setOnAction(e -> isText(primaryStage, textFieldLogin, textFieldLogin.getPromptText()));
+        buttonLogin.setOnAction(e -> validateUserName(primaryStage, textFieldLogin));
 
         // -> Layout login
         VBox layoutLogin = new VBox(20);
@@ -70,11 +68,14 @@ public class ClientGUI extends Application  {
         mesDisplayVBox.getChildren().addAll(mesScroll);
         VBox.setVgrow(mesScroll, Priority.ALWAYS);
         layoutMes.setCenter(mesDisplayVBox);
-                //mesDisplayVBox.heightProperty());
-
 
         // Right Pane
-        layoutMes.setRight(connectedUsersWindow);
+        ListView connectedListView = new ListView();
+        connectedListView.getItems().add("Josue");
+        connectedListView.getItems().add("Josue2");
+        connectedListView.getItems().add("Josue3");
+        connectedListView.getItems().add("Josue4");
+        layoutMes.setRight(connectedListView);
 
         //-> Enter button
         Button buttonEnterMes = new Button("Enter");
@@ -98,6 +99,8 @@ public class ClientGUI extends Application  {
         messageS = new Scene(layoutMes, 500, 400);
 
         // MAIN STAGE
+        primaryStage.setOnCloseRequest(e -> { if(client != null){ client.close(); } });
+
         primaryStage.setTitle("Network With Strangers");
         primaryStage.setScene(loginS);
         primaryStage.show();
@@ -105,15 +108,28 @@ public class ClientGUI extends Application  {
         mesWindowText.getChildren().add(new Text("Hi\nbye\n what up\n bye\ngo"));
     }
 
-    private boolean isText(Stage primaryScene, TextField input, String username){
-        try{
+    private boolean validateUserName(Stage primaryScene, TextField input){
+        try {
             int userN = Integer.parseInt(input.getText());
-            input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID,CornerRadii.EMPTY, BorderStroke.MEDIUM)));
+            input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
             System.out.println("Incorrect");
             return false;
-        }catch (NumberFormatException e){
-            primaryScene.setScene(messageS);
-            return true;
+        } catch (NumberFormatException e) {
+            try {
+                client = new Client(input.getText(), 5056);
+                primaryScene.setScene(messageS);
+                return true;
+            } catch (IOException p) { // Socket error
+                input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
+                System.out.println("Incorrect");
+                p.printStackTrace();
+                return false;
+            } catch (Exception u){ // Incorrect username expcetion form client
+                u.printStackTrace();
+                input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
+                System.out.println("Incorrect");
+                return false;
+            }
         }
     }
 
