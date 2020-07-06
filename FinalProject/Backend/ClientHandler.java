@@ -1,10 +1,11 @@
 package FinalProject.Backend;
 
+import FinalProject.CommunicationConstants;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.ArrayList;
 
 /**
  * This is a helper class that handles clients with threads
@@ -39,38 +40,50 @@ public class ClientHandler implements Runnable{
             try {
                 // Client received inputStream
                 received = inputC.readUTF();
-                System.out.println(received);
+                System.out.println("Packet Received: " + received);
 
-                // Logout request
-                if(received.equals("Exit")){
-                    this.isLoggedIn = false;
-                    System.out.println("Connection closed on request from client username: " + this.userName);
-                    break;
-                }
+                // Parse packet for ID and message
+                String[] packet = parsePacket(received);
+                Integer controlID = Integer.parseInt(packet[0]);
+                System.out.println(" Packet Parsed: " + packet);
+                System.out.println(" Packet Control ID: " + controlID);
 
-                // Parse header and message
-                //  header@message
-                //  header contains the username of the person we are trying to communicate with
-                String[] message = received.split("@", 2);
-
-                boolean isFound = false;
-                // Check if the recipient is connected TODO: when changed to hashmaps change this. Also, add a disconnected list (maybe)
-                for(ClientHandler c: Server.clientConnectedList){
-                    if(c.isLoggedIn && c.userName.equals(message[0])){
-                        c.outputC.writeUTF("M@" + this.userName + "@" + message[1]);
-                        isFound = true;
+                // -> HANDLE PACKET FROM SENT FROM CLIENT
+                switch (controlID){
+                    case CommunicationConstants.LOG_OUT: // Logout request
+                        this.isLoggedIn = false;
+                        disconnectClient();
+                        // TODO: send to sever that this client has disconnected
                         break;
-                    }
+
+                    case CommunicationConstants.WHISPER_MESSAGE: // Send Message to user request
+                        System.out.println(" Send Message to: " + packet[1]);
+                        boolean isFound = false;
+                        // Check if the recipient is connected
+                        for(ClientHandler c: Server.clientConnectedList){
+                            if(c.isLoggedIn && c.userName.equals(packet[1])){
+                                System.out.println(" FOUND");
+                                c.outputC.writeUTF(CommunicationConstants.WHISPER_MESSAGE + "@" + this.userName + "@" + packet[1]);
+                                isFound = true;
+                                break;
+                            }
+                        }
+
+                        if(!isFound){
+                            System.out.println(" NOT FOUND");
+                            this.outputC.writeUTF(CommunicationConstants.USER_NOT_FOUND + "@" + packet[1]);
+                        }
+                        break;
+
+                    case CommunicationConstants.CONNECTED_USERS_REQUEST: // Connected users request
+                        this.outputC.writeUTF(CommunicationConstants.CONNECTED_USERS_REQUEST + "@" + Server.userController.getUserList().toString());
+                        break;
+
                 }
-
-                if(!isFound){ this.outputC.writeUTF("A@This user was not found"); }
-
 
             } catch (IOException e){
                 try {
-                    this.socket.close();
-                    this.outputC.close();;
-                    this.inputC.close();
+                    disconnectClient();
                 }catch (IOException i){
                     System.out.println("Error closing socket");
                     i.printStackTrace();
@@ -84,16 +97,27 @@ public class ClientHandler implements Runnable{
 
         // When the client exits
         try{
-            this.socket.close();
-            this.outputC.close();;
-            this.inputC.close();
+            disconnectClient();
         }catch (IOException i){
             i.printStackTrace();
         }
     }
 
-    public String getUserName(){
-        return userName;
+    /**
+     * Parse packet sent by client
+     *     -> header@username@message
+     *     -> header contains the action, username of the person we are trying to communicate, and the message
+     * The username and message depend on the action in the header
+     * @param received
+     * @return
+     */
+    private String[] parsePacket(String received){
+        return received.split("@", 3);
     }
 
+    private void disconnectClient() throws IOException {
+        this.socket.close();
+        this.outputC.close();;
+        this.inputC.close();
+    }
 }

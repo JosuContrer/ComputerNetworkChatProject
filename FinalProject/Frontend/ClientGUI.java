@@ -1,6 +1,10 @@
 package FinalProject.Frontend;
 
+import FinalProject.CommunicationConstants;
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -10,6 +14,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
+import org.junit.Test;
 
 import java.io.IOException;
 
@@ -19,7 +24,8 @@ import java.io.IOException;
 
 public class ClientGUI extends Application  {
 
-    Client client = null;
+    Client client = new Client();
+    String recipient = null;
     Scene loginS, messageS;
 
     public static void main(String[] args) {
@@ -40,8 +46,6 @@ public class ClientGUI extends Application  {
         Button buttonLogin = new Button("Login");
         buttonLogin.setId("buttonLogin");
         // TODO: Add verification with the server to see if username has already been taken
-        buttonLogin.setOnAction(e -> validateUserName(primaryStage, textFieldLogin));
-
         // -> Layout login
         VBox layoutLogin = new VBox(20);
         layoutLogin.setPadding(new Insets(10, 10, 10, 10));
@@ -72,24 +76,11 @@ public class ClientGUI extends Application  {
         // Right Pane
         ListView connectedListView = new ListView();
         connectedListView.getItems().add("Josue");
-        connectedListView.getItems().add("Josue2");
-        connectedListView.getItems().add("Josue3");
-        connectedListView.getItems().add("Josue4");
+        connectedListView.getItems().add("STeve");
         layoutMes.setRight(connectedListView);
 
         //-> Enter button
         Button buttonEnterMes = new Button("Enter");
-        buttonEnterMes.setOnAction(e -> {
-            String t = userInputMessage.getText();
-
-            if(t.length() != 0){
-                Text mes = new Text("\n" + t);
-                mesWindowText.getChildren().add(mes);
-                userInputMessage.clear();
-                userInputMessage.requestFocus();
-                mesScroll.setVvalue(mesDisplayVBox.getHeight());
-            }
-        });
 
         // Bottom Pane
         mesLayout.getChildren().addAll(userInputMessage, buttonEnterMes);
@@ -105,10 +96,85 @@ public class ClientGUI extends Application  {
         primaryStage.setScene(loginS);
         primaryStage.show();
 
-        mesWindowText.getChildren().add(new Text("Hi\nbye\n what up\n bye\ngo"));
+        // -------------------------------THREAD--------------------------------
+        // Set thread for receiving message
+        Runnable receiveMR = new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    Integer controlID = 0;
+                    try {
+                        if(client.loggedIn) {
+                            System.out.println("Message Received:");
+                            String[] packet = client.inputC.readUTF().split("@", 3);
+                            controlID = Integer.parseInt(packet[0]);
+                            System.out.println(" ControlID: " + controlID);
+                            Text processedPacket = new Text("");
+
+                            switch (controlID) {
+                                case CommunicationConstants.WHISPER_MESSAGE:
+                                    processedPacket = new Text(packet[1] + ": " + packet[2] + "\n");
+                                    break;
+
+                                case CommunicationConstants.CONNECTED_USERS_REQUEST:
+                                    processedPacket = new Text(packet[1] + "\n");
+                                    break;
+
+                                case CommunicationConstants.USER_NOT_FOUND:
+                                    processedPacket = new Text(packet[1] + " USER NOT FOUND\n");
+                                    break;
+
+                                default:
+                                    System.out.println(" ERROR IN RECEIVER THREAD");
+                            }
+                            System.out.println(" Processed Packet: " + processedPacket.getText());
+                            Text finalProcessedPacket = processedPacket;
+                            Platform.runLater(() -> mesWindowText.getChildren().add(finalProcessedPacket));
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Client input error disconnected");
+                        e.printStackTrace();
+                        return;
+                    }
+                }
+            }
+        };
+
+        // Start thread when login button is pressed
+        // TODO: Add thread for heartbeat and connection request set priority low
+        Thread receiveMT = new Thread(receiveMR);
+        buttonLogin.setOnAction(e -> validateUserName(primaryStage, textFieldLogin, receiveMT));
+
+        // Sending message
+        buttonEnterMes.setOnAction(e -> {
+            String t = userInputMessage.getText();
+
+            if(t.length() != 0 && recipient != null){
+                Text mes = new Text("Me: " + t + "\n");
+                mesWindowText.getChildren().add(mes);
+                userInputMessage.clear();
+                userInputMessage.requestFocus();
+                mesScroll.setVvalue(mesDisplayVBox.getHeight());
+                try {
+                    client.outputC.writeUTF(CommunicationConstants.WHISPER_MESSAGE + "@" + recipient + "@" + t);
+                } catch (IOException ex) {
+                    System.out.println("ERROR IN SENDER THREAD");
+                    ex.printStackTrace();
+                }
+            }
+        });
+
+        // Add listener for list view of the connected users
+        connectedListView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>() {
+            @Override
+            public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
+                recipient = newValue;
+            }
+        });
+
     }
 
-    private boolean validateUserName(Stage primaryScene, TextField input){
+    private boolean validateUserName(Stage primaryScene, TextField input, Thread t){
         try {
             int userN = Integer.parseInt(input.getText());
             input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
@@ -117,7 +183,9 @@ public class ClientGUI extends Application  {
         } catch (NumberFormatException e) {
             try {
                 client = new Client(input.getText(), 5056);
+                client.outputC.writeUTF(input.getText());
                 primaryScene.setScene(messageS);
+                t.start();
                 return true;
             } catch (IOException p) { // Socket error
                 input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));

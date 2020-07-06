@@ -22,6 +22,7 @@ public class Server {
     // Class variables
     private ServerSocket serverSocket = null; //Socket Server
     public static ArrayList<ClientHandler> clientConnectedList = new ArrayList<>();
+    public static UserController userController = new UserController();
 //    static Vector<ClientHandler> clientConnectedList = new Vector<>(); // list of connected clients
 
     public Server(Integer serverSocketNumber){
@@ -64,6 +65,7 @@ public class Server {
 
                 // -> Add client to connected list
                 clientConnectedList.add(client);
+                userController.addUser(clientUsername);
                 //clientConnectedList.add(client);
 
                 // -> Instantiate thread for client
