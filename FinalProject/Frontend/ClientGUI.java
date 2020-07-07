@@ -29,6 +29,8 @@ public class ClientGUI extends Application  {
     String recipient = null;
     Scene loginS, messageS;
     String connectedUsers = null;
+    Boolean isDuplicate = true;
+    Boolean firstTime = true;
 
     public static void main(String[] args) {
         launch(args);
@@ -167,7 +169,12 @@ public class ClientGUI extends Application  {
         Thread heartBeatThread = new Thread(heartBeat);
         receiveMT.setPriority(Thread.NORM_PRIORITY);
         heartBeatThread.setPriority(Thread.MIN_PRIORITY);
-        buttonLogin.setOnAction(e -> validateUserName(primaryStage, textFieldLogin, receiveMT, heartBeatThread));
+        buttonLogin.setOnAction(e -> {
+            if(!validateUserName(primaryStage, textFieldLogin, receiveMT, heartBeatThread)){
+                Label tryAgainLabel = new Label("Try Another Username");
+                layoutLogin.getChildren().add(tryAgainLabel);
+            }
+        });
 
         // Sending message
         buttonEnterMes.setOnAction(e -> {
@@ -208,9 +215,7 @@ public class ClientGUI extends Application  {
         if(connectedUsers == null || connectedUsers.equals("")){
             return new String[]{"NO ONE CONNECTED"};
         }
-
         return connectedUsers.split(",");
-
     }
 
     private boolean validateUserName(Stage primaryScene, TextField input, Thread recieveThread, Thread heartBeat){
@@ -223,6 +228,11 @@ public class ClientGUI extends Application  {
             try {
                 client = new Client(input.getText(), 5056);
                 client.outputC.writeUTF(input.getText());
+                Integer dup = client.inputC.read();
+                if(CommunicationConstants.IS_DUPLICATE == dup){
+                    input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
+                    return false;
+                }
                 primaryScene.setTitle(input.getText());
                 primaryScene.setScene(messageS);
                 recieveThread.start();

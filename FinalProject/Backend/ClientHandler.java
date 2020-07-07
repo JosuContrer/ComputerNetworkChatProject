@@ -24,13 +24,15 @@ public class ClientHandler implements Runnable{
     // ->Client IO streams
     private DataOutputStream outputC = null;
     private DataInputStream inputC = null;
+    private Boolean isDuplicate = false;
 
-    public ClientHandler(String userName, Socket s, DataInputStream input, DataOutputStream output){
+    public ClientHandler(String userName, Socket s, DataInputStream input, DataOutputStream output, Boolean isDuplicate){
         this.userName = userName;
         this.socket = s;
         this.inputC = input;
         this.outputC = output;
         this.isLoggedIn = true;
+        this.isDuplicate = isDuplicate;
     }
 
     @Override
@@ -40,27 +42,26 @@ public class ClientHandler implements Runnable{
             try {
                 // Client received inputStream
                 received = inputC.readUTF();
-                System.out.println("Packet Received: " + received);
+//                System.out.println("Packet Received: " + received);
 
                 // Parse packet for ID and message
                 String[] packet = parsePacket(received);
                 Integer controlID = Integer.parseInt(packet[0]);
-                System.out.println(" Packet Control ID: " + controlID);
+//                System.out.println(" Packet Control ID: " + controlID);
 
                 // -> HANDLE PACKET FROM SENT FROM CLIENT
-                switch (controlID){
+                switch (controlID) {
                     case CommunicationConstants.LOG_OUT: // Logout request
                         this.isLoggedIn = false;
                         disconnectClient();
-                        // TODO: send to sever that this client has disconnected
                         break;
 
                     case CommunicationConstants.WHISPER_MESSAGE: // Send Message to user request
                         System.out.println(" Send Message to: " + packet[1]);
                         boolean isFound = false;
                         // Check if the recipient is connected
-                        for(ClientHandler c: Server.clientConnectedList){
-                            if(c.isLoggedIn && c.userName.equals(packet[1])){
+                        for (ClientHandler c : Server.clientConnectedList) {
+                            if (c.isLoggedIn && c.userName.equals(packet[1])) {
                                 System.out.println(" FOUND");
                                 c.outputC.writeUTF(CommunicationConstants.WHISPER_MESSAGE + "@" + this.userName + "@" + packet[2]);
                                 isFound = true;
@@ -68,7 +69,7 @@ public class ClientHandler implements Runnable{
                             }
                         }
 
-                        if(!isFound){
+                        if (!isFound) {
                             System.out.println(" NOT FOUND");
                             this.outputC.writeUTF(CommunicationConstants.USER_NOT_FOUND + "@" + packet[1]);
                         }
@@ -77,9 +78,7 @@ public class ClientHandler implements Runnable{
                     case CommunicationConstants.CONNECTED_USERS_REQUEST: // Connected users request
                         this.outputC.writeUTF(CommunicationConstants.CONNECTED_USERS_REQUEST + "@" + Server.userController.toString());
                         break;
-
                 }
-
             } catch (IOException e){
                 try {
                     disconnectClient();
@@ -88,12 +87,12 @@ public class ClientHandler implements Runnable{
                     i.printStackTrace();
                     break;
                 }
+                System.out.println("Client has disconnected: " + this.userName);
                 System.out.println("Client Handler exception");
-                e.printStackTrace();
+//                e.printStackTrace();
                 break;
             }
         }
-
         // When the client exits
         try{
             disconnectClient();
@@ -119,5 +118,10 @@ public class ClientHandler implements Runnable{
         this.socket.close();
         this.outputC.close();;
         this.inputC.close();
+        Server.deleteClient(userName);
+    }
+
+    public String getUserName() {
+        return userName;
     }
 }

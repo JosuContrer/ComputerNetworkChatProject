@@ -1,5 +1,6 @@
 package FinalProject.Backend;
 
+import FinalProject.CommunicationConstants;
 import FinalProject.Frontend.Client;
 import Sandbox.ChatApplicationTutorial.ClientHandler3;
 
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Vector;
 
 /**
@@ -21,9 +23,9 @@ public class Server {
 
     // Class variables
     private ServerSocket serverSocket = null; //Socket Server
-    public static ArrayList<ClientHandler> clientConnectedList = new ArrayList<>();
+//    public static ArrayLis<ClientHandler> clientConnectedList = new ArrayList<>();
+    public static LinkedList<ClientHandler> clientConnectedList = new LinkedList<>();
     public static UserController userController = new UserController();
-//    static Vector<ClientHandler> clientConnectedList = new Vector<>(); // list of connected clients
 
     public Server(Integer serverSocketNumber){
         try {
@@ -60,21 +62,40 @@ public class Server {
 
                 // -> Create a ClientHandler Object
                 String clientUsername = input.readUTF();
-                System.out.println("Client username " + clientUsername + " is connecting");
-                ClientHandler client = new ClientHandler(clientUsername, clientRequestSocket, input, output);
 
-                // -> Add client to connected list
-                clientConnectedList.add(client);
-                userController.addUser(clientUsername);
-                //clientConnectedList.add(client);
+                // -> Check if user already took that name
+                Boolean isDuplicate = !userController.addUser(clientUsername);
+                Integer dup = CommunicationConstants.NOT_DUPLICATE;
+                if(isDuplicate){ dup = CommunicationConstants.IS_DUPLICATE; }
+                output.write(dup);
 
-                // -> Instantiate thread for client
-                t = new Thread(client, clientUsername + " Sever Thread");
-                t.start();
+                if(isDuplicate){
+                    System.out.println(" Try Again Login-> Client with duplicate username: " + clientUsername);
+                }else{
+                    System.out.println("Client connecting with username:  " + clientUsername);
+                    // -> Create Client Handler
+                    ClientHandler client = new ClientHandler(clientUsername, clientRequestSocket, input, output, isDuplicate);
 
+                    // -> Add client to connected list
+                    clientConnectedList.add(client);
+
+                    // -> Instantiate thread for client
+                    t = new Thread(client, clientUsername + " Sever Thread");
+                    t.start();
+                }
             } catch (IOException e){
-                System.out.println("Server exception");
+                System.out.println("SERVER EXCEPTION");
                 e.printStackTrace();
+                System.out.println("SERVER CLOSING...");
+                break;
+            }
+        }
+    }
+
+    public static void deleteClient(String userName){
+        for(ClientHandler ch: clientConnectedList){
+            if(userName.equals(ch.getUserName())){
+                clientConnectedList.remove(clientConnectedList.indexOf(ch));
             }
         }
     }

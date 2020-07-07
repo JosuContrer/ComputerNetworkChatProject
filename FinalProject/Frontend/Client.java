@@ -2,6 +2,7 @@ package FinalProject.Frontend;
 
 import FinalProject.Backend.ClientHandler;
 import FinalProject.Backend.Server;
+import FinalProject.CommunicationConstants;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -41,9 +42,7 @@ public class Client {
                 this.inputC = new DataInputStream(this.socketC.getInputStream());
                 this.outputC = new DataOutputStream(this.socketC.getOutputStream());
                 this.userName = userName;
-                //this.outputC.writeUTF(userName);
                 this.loggedIn = true;
-                System.out.println("Welcome " + this.userName);
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new IOException("Client cannot connect at the moment");
@@ -51,6 +50,10 @@ public class Client {
         } else{
             throw new Exception("not valid username");
         }
+    }
+
+    public void setUserName(String userName){
+        this.userName = userName;
     }
 
     /**
