@@ -5,6 +5,8 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -14,7 +16,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
-import org.junit.Test;
 
 import java.io.IOException;
 
@@ -27,6 +28,7 @@ public class ClientGUI extends Application  {
     Client client = new Client();
     String recipient = null;
     Scene loginS, messageS;
+    String connectedUsers = null;
 
     public static void main(String[] args) {
         launch(args);
@@ -80,10 +82,11 @@ public class ClientGUI extends Application  {
         layoutMes.setRight(connectedListView);
 
         //-> Enter button
+        Button buttonConnectedListRefresh = new Button("Refresh");
         Button buttonEnterMes = new Button("Enter");
 
         // Bottom Pane
-        mesLayout.getChildren().addAll(userInputMessage, buttonEnterMes);
+        mesLayout.getChildren().addAll(userInputMessage, buttonEnterMes, buttonConnectedListRefresh);
         HBox.setHgrow(userInputMessage, Priority.ALWAYS);
         layoutMes.setBottom(mesLayout);
 
@@ -117,7 +120,7 @@ public class ClientGUI extends Application  {
                                     break;
 
                                 case CommunicationConstants.CONNECTED_USERS_REQUEST:
-                                    processedPacket = new Text(packet[1] + "\n");
+                                    connectedUsers = packet[1];
                                     break;
 
                                 case CommunicationConstants.USER_NOT_FOUND:
@@ -140,10 +143,31 @@ public class ClientGUI extends Application  {
             }
         };
 
+        // Heartbeat for connected list
+        Runnable heartBeat = new Runnable() {
+            @Override
+            public void run() {
+                while (client.loggedIn){
+                    System.out.println("Sending heartbeat");
+                    try{
+                        client.outputC.writeUTF(CommunicationConstants.CONNECTED_USERS_REQUEST + "@");
+                        Thread.sleep(3000);
+                    }catch(InterruptedException i){
+                        // Low priority thread so nothing to worry
+                        i.printStackTrace();
+                    }catch (IOException e){
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
+
         // Start thread when login button is pressed
-        // TODO: Add thread for heartbeat and connection request set priority low
         Thread receiveMT = new Thread(receiveMR);
-        buttonLogin.setOnAction(e -> validateUserName(primaryStage, textFieldLogin, receiveMT));
+        Thread heartBeatThread = new Thread(heartBeat);
+        receiveMT.setPriority(Thread.NORM_PRIORITY);
+        heartBeatThread.setPriority(Thread.MIN_PRIORITY);
+        buttonLogin.setOnAction(e -> validateUserName(primaryStage, textFieldLogin, receiveMT, heartBeatThread));
 
         // Sending message
         buttonEnterMes.setOnAction(e -> {
@@ -172,9 +196,24 @@ public class ClientGUI extends Application  {
             }
         });
 
+        buttonConnectedListRefresh.setOnAction(e -> {
+            String[] arrayUserNames = parseUserNames(connectedUsers);
+            ObservableList<String> userNames = FXCollections.observableArrayList(arrayUserNames);
+            connectedListView.setItems(userNames);
+        });
+
     }
 
-    private boolean validateUserName(Stage primaryScene, TextField input, Thread t){
+    private String[] parseUserNames(String connectedUsers){
+        if(connectedUsers == null || connectedUsers.equals("")){
+            return new String[]{"NO ONE CONNECTED"};
+        }
+
+        return connectedUsers.split(",");
+
+    }
+
+    private boolean validateUserName(Stage primaryScene, TextField input, Thread recieveThread, Thread heartBeat){
         try {
             int userN = Integer.parseInt(input.getText());
             input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
@@ -184,8 +223,10 @@ public class ClientGUI extends Application  {
             try {
                 client = new Client(input.getText(), 5056);
                 client.outputC.writeUTF(input.getText());
+                primaryScene.setTitle(input.getText());
                 primaryScene.setScene(messageS);
-                t.start();
+                recieveThread.start();
+                heartBeat.start();
                 return true;
             } catch (IOException p) { // Socket error
                 input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
@@ -200,5 +241,4 @@ public class ClientGUI extends Application  {
             }
         }
     }
-
 }

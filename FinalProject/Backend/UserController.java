@@ -56,4 +56,14 @@ public class UserController {
     public LinkedList<String> getUserList(){
         return userList;
     }
+
+    @Override
+    public String toString(){
+        String result = "";
+
+        for(String s: userList){
+            result = result + s + ",";
+        }
+        return result;
+    }
 }

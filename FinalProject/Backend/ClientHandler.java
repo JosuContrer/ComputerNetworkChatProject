@@ -45,7 +45,6 @@ public class ClientHandler implements Runnable{
                 // Parse packet for ID and message
                 String[] packet = parsePacket(received);
                 Integer controlID = Integer.parseInt(packet[0]);
-                System.out.println(" Packet Parsed: " + packet);
                 System.out.println(" Packet Control ID: " + controlID);
 
                 // -> HANDLE PACKET FROM SENT FROM CLIENT
@@ -63,7 +62,7 @@ public class ClientHandler implements Runnable{
                         for(ClientHandler c: Server.clientConnectedList){
                             if(c.isLoggedIn && c.userName.equals(packet[1])){
                                 System.out.println(" FOUND");
-                                c.outputC.writeUTF(CommunicationConstants.WHISPER_MESSAGE + "@" + this.userName + "@" + packet[1]);
+                                c.outputC.writeUTF(CommunicationConstants.WHISPER_MESSAGE + "@" + this.userName + "@" + packet[2]);
                                 isFound = true;
                                 break;
                             }
@@ -76,7 +75,7 @@ public class ClientHandler implements Runnable{
                         break;
 
                     case CommunicationConstants.CONNECTED_USERS_REQUEST: // Connected users request
-                        this.outputC.writeUTF(CommunicationConstants.CONNECTED_USERS_REQUEST + "@" + Server.userController.getUserList().toString());
+                        this.outputC.writeUTF(CommunicationConstants.CONNECTED_USERS_REQUEST + "@" + Server.userController.toString());
                         break;
 
                 }
@@ -116,6 +115,7 @@ public class ClientHandler implements Runnable{
     }
 
     private void disconnectClient() throws IOException {
+        Server.userController.deleteUser(userName);
         this.socket.close();
         this.outputC.close();;
         this.inputC.close();

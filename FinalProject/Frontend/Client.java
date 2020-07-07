@@ -58,6 +58,7 @@ public class Client {
      */
     public void close(){
         try {
+            loggedIn = false;
             socketC.close();
             inputC.close();
             outputC.close();
