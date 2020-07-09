@@ -1,6 +1,5 @@
 package FinalProject.Frontend;
 
-import FinalProject.CommunicationConstants;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
@@ -25,8 +24,9 @@ import java.io.IOException;
  *  Client GUI that prompts the user to enter a unique username
  *  and verifies in the frontend and banckend of the chat program.
  *  It then enables the user to select from a list of connected
- *  users on the right side of the window. The connection list has
- *  to be refreshed by the user to see the currently connected users.
+ *  users on the right side of the window. The connection list can
+ *  be either refreshed by the user or it updates every heartbeat
+ *  set time interval to see the currently connected users.
  *  The messages on the screen are direct messages or 'whispers' to
  *  each user only and cannot be seen by other users.
  *
@@ -123,6 +123,7 @@ public class ClientGUI extends Application  {
             public void run() {
                 while (true) {
                     Integer controlID = 0;
+                    Boolean updateConnectedUsers = false;
                     try
                     {
                         if(client.loggedIn)
@@ -138,6 +139,7 @@ public class ClientGUI extends Application  {
 
                                 case CommunicationConstants.CONNECTED_USERS_REQUEST:
                                     connectedUsers = packet[1];
+                                    updateConnectedUsers = true;
                                     break;
 
                                 case CommunicationConstants.USER_NOT_FOUND:
@@ -151,7 +153,16 @@ public class ClientGUI extends Application  {
 
                             // Display packet received by the server through the GUI thread
                             Text finalProcessedPacket = processedPacket;
-                            Platform.runLater(() -> mesWindowText.getChildren().add(finalProcessedPacket));
+                            if(!updateConnectedUsers)
+                            {
+                                Platform.runLater(() -> mesWindowText.getChildren().add(finalProcessedPacket));
+                            }
+                            else
+                            {
+                                String[] arrayUserNames = parseUserNames(connectedUsers);
+                                ObservableList<String> userNames = FXCollections.observableArrayList(arrayUserNames);
+                                Platform.runLater(() -> connectedListView.setItems(userNames));
+                            }
                         }
                     }
                     catch (IOException e)

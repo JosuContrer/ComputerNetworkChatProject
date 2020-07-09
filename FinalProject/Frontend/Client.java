@@ -1,7 +1,5 @@
 package FinalProject.Frontend;
 
-import FinalProject.CommunicationConstants;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
