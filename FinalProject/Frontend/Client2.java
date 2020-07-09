@@ -13,15 +13,13 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
-import org.junit.Test;
 
-import javax.print.DocFlavor;
 import java.io.IOException;
-import java.io.Serializable;
-import java.util.Queue;
 
 /**
  * Java 8: because we are using lambda expressions
@@ -44,6 +42,7 @@ public class Client2 extends Application  {
         // LOGIN SCENE
         // -> Labels and button (with lambda expressions)
         Label titleLogin = new Label("Login");
+        titleLogin.setFont(Font.font(null, FontWeight.BOLD, 30));
         Label instructionsLogin = new Label("Enter Username");
 
         TextField textFieldLogin = new TextField();
@@ -51,7 +50,7 @@ public class Client2 extends Application  {
 
         Button buttonLogin = new Button("Login");
         buttonLogin.setId("buttonLogin");
-        // TODO: Add verification with the server to see if username has already been taken
+
         // -> Layout login
         VBox layoutLogin = new VBox(20);
         layoutLogin.setPadding(new Insets(10, 10, 10, 10));
@@ -82,7 +81,7 @@ public class Client2 extends Application  {
         // Right Pane
         ListView connectedListView = new ListView();
         connectedListView.getItems().add("Josue");
-        connectedListView.getItems().add("STeve");
+        connectedListView.getItems().add("Steve");
         layoutMes.setRight(connectedListView);
 
         //-> Enter button
@@ -97,7 +96,7 @@ public class Client2 extends Application  {
         messageS = new Scene(layoutMes, 500, 400);
 
         // MAIN STAGE
-        primaryStage.setOnCloseRequest(e -> { if(client != null){ client.close(); } });
+        primaryStage.setOnCloseRequest(e -> { if(client != null && client.loggedIn){ client.close(); } });
 
         primaryStage.setTitle("Network With Strangers");
         primaryStage.setScene(loginS);
@@ -112,10 +111,8 @@ public class Client2 extends Application  {
                     Integer controlID = 0;
                     try {
                         if(client.loggedIn) {
-                            System.out.println("Message Received:");
                             String[] packet = client.inputC.readUTF().split("@", 3);
                             controlID = Integer.parseInt(packet[0]);
-                            System.out.println(" ControlID: " + controlID);
                             Text processedPacket = new Text("");
 
                             switch (controlID) {
@@ -129,18 +126,22 @@ public class Client2 extends Application  {
 
                                 case CommunicationConstants.USER_NOT_FOUND:
                                     processedPacket = new Text(packet[1] + " USER NOT FOUND\n");
+                                    processedPacket.setFont(Font.font(null, FontWeight.BOLD, 12));
                                     break;
 
                                 default:
                                     System.out.println(" ERROR IN RECEIVER THREAD");
                             }
-                            System.out.println(" Processed Packet: " + processedPacket.getText());
+
+                            // Display packet received by the server through the GUI thread
                             Text finalProcessedPacket = processedPacket;
                             Platform.runLater(() -> mesWindowText.getChildren().add(finalProcessedPacket));
                         }
                     } catch (IOException e) {
-                        System.out.println("Client input error disconnected");
-                        e.printStackTrace();
+                        Text serverFail = new Text("SERVER DISCONNECTED");
+                        serverFail.setFont(Font.font(null, FontWeight.BOLD, 12));
+                        Platform.runLater(() -> mesWindowText.getChildren().add(serverFail));
+                        client.close();
                         return;
                     }
                 }
@@ -160,7 +161,8 @@ public class Client2 extends Application  {
                         // Low priority thread so nothing to worry
                         i.printStackTrace();
                     }catch (IOException e){
-                        e.printStackTrace();
+                        client.close();
+                        break;
                     }
                 }
             }
@@ -171,14 +173,19 @@ public class Client2 extends Application  {
         Thread heartBeatThread = new Thread(heartBeat);
         receiveMT.setPriority(Thread.NORM_PRIORITY);
         heartBeatThread.setPriority(Thread.MIN_PRIORITY);
-        buttonLogin.setOnAction(e -> validateUserName(primaryStage, textFieldLogin, receiveMT, heartBeatThread));
+        buttonLogin.setOnAction(e -> {
+            if(layoutLogin.getChildren().size() > 4) {
+                layoutLogin.getChildren().remove(layoutLogin.getChildren().size()-1);
+            }
+            validateUserName(primaryStage, textFieldLogin, layoutLogin, receiveMT, heartBeatThread);
+        });
 
         // Sending message
         buttonEnterMes.setOnAction(e -> {
             String t = userInputMessage.getText();
 
             if(t.length() != 0 && recipient != null){
-                Text mes = new Text("Me: " + t + "\n");
+                Text mes = new Text("Me->" + recipient + ": " + t + "\n");
                 mesWindowText.getChildren().add(mes);
                 userInputMessage.clear();
                 userInputMessage.requestFocus();
@@ -192,7 +199,7 @@ public class Client2 extends Application  {
             }
         });
 
-        // Add listener for list view of the connected users
+        // Listener for list view of the connected users
         connectedListView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>() {
             @Override
             public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
@@ -208,42 +215,72 @@ public class Client2 extends Application  {
 
     }
 
-    private String[] parseUserNames(String connectedUsers){
-        if(connectedUsers == null || connectedUsers.equals("")){
-            return new String[]{"NO ONE CONNECTED"};
-        }
-
-        return connectedUsers.split(",");
-
-    }
-
-    private boolean validateUserName(Stage primaryScene, TextField input, Thread recieveThread, Thread heartBeat){
+    /**
+     * Validates the username on the frontend and backend.
+     *      -> Frontend validation:
+     *            1) Requires the username to be of length one or greater
+     *            2) Requires the username to be more than just a number
+     *      -> Backend validation:
+     *            1) Checks for duplicate username on the server side
+     * @param primaryScene
+     * @param input
+     * @param layoutLogin
+     * @param recieveThread
+     * @param heartBeat
+     * @return: logged in successfully or not
+     */
+    private boolean validateUserName(Stage primaryScene, TextField input, VBox layoutLogin, Thread recieveThread, Thread heartBeat){
         try {
-            int userN = Integer.parseInt(input.getText());
+            Integer.parseInt(input.getText()); // Check if a String is present (cannot be only a number for username)
             input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
-            System.out.println("Incorrect");
+            layoutLogin.getChildren().add(new Label("Invalid Username"));
             return false;
         } catch (NumberFormatException e) {
             try {
                 client = new Client(input.getText(), 5056);
                 client.outputC.writeUTF(input.getText());
+                Integer dup = client.inputC.read();
+                if(CommunicationConstants.IS_DUPLICATE == dup){ // Username is duplicate
+                    input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
+                    layoutLogin.getChildren().add(new Label("Username Taken"));
+                    return false;
+                }
                 primaryScene.setTitle(input.getText());
                 primaryScene.setScene(messageS);
                 recieveThread.start();
                 heartBeat.start();
                 return true;
-            } catch (IOException p) { // Socket error
+            } catch (IOException p) { // Socket error from server
                 input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
-                System.out.println("Incorrect");
-                p.printStackTrace();
+                if(p.getMessage().equals(CommunicationConstants.SERVER_FAILED)){
+                    layoutLogin.getChildren().add(new Label("SERVER OFFLINE\nTry Again Later"));
+                }else{
+                    p.printStackTrace();
+                }
                 return false;
-            } catch (Exception u){ // Incorrect username expcetion form client
-                u.printStackTrace();
-                input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
-                System.out.println("Incorrect");
+            } catch (Exception u){ // Incorrect username exception form client
+                if(u.getMessage().equals(CommunicationConstants.INVALID_USERNAME)){
+                    input.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.MEDIUM)));
+                    layoutLogin.getChildren().add(new Label("Invalid Username"));
+                }else{
+                    u.printStackTrace();
+                }
                 return false;
             }
         }
     }
 
+    /**
+     * Helper function that parses through the list sent by the server of connected users and splits it
+     * into an array of strings.
+     *
+     * @param connectedUsers
+     * @return
+     */
+    private String[] parseUserNames(String connectedUsers){
+        if(connectedUsers == null || connectedUsers.equals("")){
+            return new String[]{"NO ONE CONNECTED"};
+        }
+        return connectedUsers.split(",");
+    }
 }

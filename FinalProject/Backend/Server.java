@@ -1,31 +1,25 @@
 package FinalProject.Backend;
 
 import FinalProject.CommunicationConstants;
-import FinalProject.Frontend.Client;
-import Sandbox.ChatApplicationTutorial.ClientHandler3;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.Vector;
 
 /**
  * This Server can handle multiple client request with the help of the
  * ClientHandler helper class.
  *
- * TODO: if a client disconects or looses connection keep running server
  */
 public class Server {
 
     // Class variables
     private ServerSocket serverSocket = null; //Socket Server
-//    public static ArrayLis<ClientHandler> clientConnectedList = new ArrayList<>();
     public static LinkedList<ClientHandler> clientConnectedList = new LinkedList<>();
-    public static UserController userController = new UserController();
+    public static connectedUserManager connectedUserManager = new connectedUserManager();
 
     public Server(Integer serverSocketNumber){
         try {
@@ -45,14 +39,14 @@ public class Server {
      * This helper method contains the infinite loop that allows to listen for multiple requests
      */
     private void start(){
-        System.out.println("Server Starting on port " + this.serverSocket.toString());
+        System.out.println("Server Starting on port\n  Local Port: " + this.serverSocket.getLocalPort() + "\n  Address: " + this.serverSocket.getInetAddress());
 
         while(true){
             Socket clientRequestSocket = null;
             Thread t = null;
             try {
                 // Server ready to for new Client to connect
-                System.out.println("Server ready for new Client");
+                //System.out.println("Server ready for new Client");
                 clientRequestSocket = serverSocket.accept();
 
                 // Client request has to be processed and handled
@@ -60,28 +54,39 @@ public class Server {
                 DataInputStream input = new DataInputStream(clientRequestSocket.getInputStream());
                 DataOutputStream output = new DataOutputStream(clientRequestSocket.getOutputStream());
 
+                Boolean clientConnectionS = true;
+                String clientUsername = null;
                 // -> Create a ClientHandler Object
-                String clientUsername = input.readUTF();
+                try {
+                    clientUsername = input.readUTF();
+                }catch (IOException e){
+                    System.out.println("Client Connection Failed");
+                    clientConnectionS = false;
+                }
 
-                // -> Check if user already took that name
-                Boolean isDuplicate = !userController.addUser(clientUsername);
-                Integer dup = CommunicationConstants.NOT_DUPLICATE;
-                if(isDuplicate){ dup = CommunicationConstants.IS_DUPLICATE; }
-                output.write(dup);
+                if(clientConnectionS) {
+                    // -> Check if user already took that name
+                    Boolean isDuplicate = !connectedUserManager.addUser(clientUsername);
+                    Integer dup = CommunicationConstants.NOT_DUPLICATE;
+                    if (isDuplicate) {
+                        dup = CommunicationConstants.IS_DUPLICATE;
+                    }
+                    output.write(dup);
 
-                if(isDuplicate){
-                    System.out.println(" Try Again Login-> Client with duplicate username: " + clientUsername);
-                }else{
-                    System.out.println("Client connecting with username:  " + clientUsername);
-                    // -> Create Client Handler
-                    ClientHandler client = new ClientHandler(clientUsername, clientRequestSocket, input, output, isDuplicate);
+                    if (isDuplicate) {
+                        System.out.println(" Try Again Login-> Client with duplicate username: " + clientUsername);
+                    } else {
+                        System.out.println("  Client connecting with username:  " + clientUsername);
+                        // -> Create Client Handler
+                        ClientHandler client = new ClientHandler(clientUsername, clientRequestSocket, input, output, isDuplicate);
 
-                    // -> Add client to connected list
-                    clientConnectedList.add(client);
+                        // -> Add client to connected list
+                        clientConnectedList.add(client);
 
-                    // -> Instantiate thread for client
-                    t = new Thread(client, clientUsername + " Sever Thread");
-                    t.start();
+                        // -> Instantiate thread for client
+                        t = new Thread(client, clientUsername + " Sever Thread");
+                        t.start();
+                    }
                 }
             } catch (IOException e){
                 System.out.println("SERVER EXCEPTION");
@@ -100,7 +105,16 @@ public class Server {
         }
     }
 
+    public void close() {
+        try {
+            this.serverSocket.close();
+        }catch (IOException e){
+
+        }
+    }
+
     public static void main(String[] args){
-        Server s = new Server(5056);
+//        Server s = new Server(5056);
+        new Server(59091);
     }
 }

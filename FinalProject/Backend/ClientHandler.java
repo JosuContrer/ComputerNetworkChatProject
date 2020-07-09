@@ -9,7 +9,6 @@ import java.net.Socket;
 
 /**
  * This is a helper class that handles clients with threads
- * TODO: add another thread that sends a heartbeat to each client
  * to make sure they are still connected. If not heartbeat is received
  * then that means the Client disconnected and then we get them off the
  * connected list.
@@ -25,6 +24,8 @@ public class ClientHandler implements Runnable{
     private DataOutputStream outputC = null;
     private DataInputStream inputC = null;
     private Boolean isDuplicate = false;
+
+    public ClientHandler(){}
 
     public ClientHandler(String userName, Socket s, DataInputStream input, DataOutputStream output, Boolean isDuplicate){
         this.userName = userName;
@@ -42,12 +43,10 @@ public class ClientHandler implements Runnable{
             try {
                 // Client received inputStream
                 received = inputC.readUTF();
-//                System.out.println("Packet Received: " + received);
 
-                // Parse packet for ID and message
+                // Parse the packet for ID and message
                 String[] packet = parsePacket(received);
                 Integer controlID = Integer.parseInt(packet[0]);
-//                System.out.println(" Packet Control ID: " + controlID);
 
                 // -> HANDLE PACKET FROM SENT FROM CLIENT
                 switch (controlID) {
@@ -57,12 +56,12 @@ public class ClientHandler implements Runnable{
                         break;
 
                     case CommunicationConstants.WHISPER_MESSAGE: // Send Message to user request
-                        System.out.println(" Send Message to: " + packet[1]);
+                        System.out.println(" Send Message: " + this.userName + "->" + packet[1]);
                         boolean isFound = false;
+
                         // Check if the recipient is connected
                         for (ClientHandler c : Server.clientConnectedList) {
                             if (c.isLoggedIn && c.userName.equals(packet[1])) {
-                                System.out.println(" FOUND");
                                 c.outputC.writeUTF(CommunicationConstants.WHISPER_MESSAGE + "@" + this.userName + "@" + packet[2]);
                                 isFound = true;
                                 break;
@@ -70,13 +69,13 @@ public class ClientHandler implements Runnable{
                         }
 
                         if (!isFound) {
-                            System.out.println(" NOT FOUND");
+                            System.out.println("  User not found: " + packet[1]);
                             this.outputC.writeUTF(CommunicationConstants.USER_NOT_FOUND + "@" + packet[1]);
                         }
                         break;
 
                     case CommunicationConstants.CONNECTED_USERS_REQUEST: // Connected users request
-                        this.outputC.writeUTF(CommunicationConstants.CONNECTED_USERS_REQUEST + "@" + Server.userController.toString());
+                        this.outputC.writeUTF(CommunicationConstants.CONNECTED_USERS_REQUEST + "@" + Server.connectedUserManager.toString());
                         break;
                 }
             } catch (IOException e){
@@ -88,8 +87,6 @@ public class ClientHandler implements Runnable{
                     break;
                 }
                 System.out.println("Client has disconnected: " + this.userName);
-                System.out.println("Client Handler exception");
-//                e.printStackTrace();
                 break;
             }
         }
@@ -114,7 +111,7 @@ public class ClientHandler implements Runnable{
     }
 
     private void disconnectClient() throws IOException {
-        Server.userController.deleteUser(userName);
+        Server.connectedUserManager.deleteUser(userName);
         this.socket.close();
         this.outputC.close();;
         this.inputC.close();

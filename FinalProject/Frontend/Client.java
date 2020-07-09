@@ -1,7 +1,5 @@
 package FinalProject.Frontend;
 
-import FinalProject.Backend.ClientHandler;
-import FinalProject.Backend.Server;
 import FinalProject.CommunicationConstants;
 
 import java.io.DataInputStream;
@@ -9,8 +7,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.Scanner;
 
 /**
@@ -20,7 +16,6 @@ import java.util.Scanner;
  */
 public class Client {
 
-    // Class variables
     // ->Client identification elements
     private String userName = null;
     private Socket socketC = null;
@@ -35,23 +30,26 @@ public class Client {
     }
 
     public Client(String userName, Integer serverSocket) throws Exception {
-        if(userName.length() >= 1) {
+        if(userName.length() >= 1) { // Check for a blank username
             try {
-                this.ip = InetAddress.getLocalHost(); // get the local host IP Address
-                this.socketC = new Socket(this.ip, serverSocket); // Create Client socket given ip and server socket
+                this.ip = InetAddress.getLocalHost();               // Get the local host IP Address
+                this.socketC = new Socket(this.ip, serverSocket);   // Create Client socket given ip and server socket
                 this.inputC = new DataInputStream(this.socketC.getInputStream());
                 this.outputC = new DataOutputStream(this.socketC.getOutputStream());
                 this.userName = userName;
                 this.loggedIn = true;
             } catch (IOException e) {
-                e.printStackTrace();
-                throw new IOException("Client cannot connect at the moment");
+                throw new IOException(CommunicationConstants.SERVER_FAILED);
             }
         } else{
-            throw new Exception("not valid username");
+            throw new Exception(CommunicationConstants.INVALID_USERNAME);
         }
     }
 
+    /**
+     * To change the username of the client if needed.
+     * @param userName
+     */
     public void setUserName(String userName){
         this.userName = userName;
     }
@@ -66,7 +64,7 @@ public class Client {
             inputC.close();
             outputC.close();
         }catch (IOException e){
-            e.printStackTrace();
+            System.out.println("Client Forced Close");
         }
     }
 

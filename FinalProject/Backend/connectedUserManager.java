@@ -1,14 +1,13 @@
 package FinalProject.Backend;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 
-public class UserController {
+public class connectedUserManager {
 
     private static LinkedList<String> userList = new LinkedList<>();
 
     /**
-     * Delete user form list
+     * Delete user form list.
      * @param userName
      * @return
      */
@@ -23,7 +22,7 @@ public class UserController {
     }
 
     /**
-     * Adds a user to the list
+     * Adds a user to the list.
      * @param userName
      * @return
      */
@@ -50,7 +49,7 @@ public class UserController {
     }
 
     /**
-     *
+     * Returns Linked List off all connected users.
      * @return
      */
     public LinkedList<String> getUserList(){
