@@ -1,19 +1,25 @@
 package FinalProject.Tests;
 
 import FinalProject.CommunicationConstants;
+import FinalProject.Backend.*;
+import FinalProject.Frontend.*;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
 
-import FinalProject.Backend.*;
-import FinalProject.Frontend.*;
-
+/**
+ * The following class test for the proper functionality
+ * of the connectedUserManager and Client classes. For
+ * the unit tests on the Client class the server has to
+ * be offline (not connected) since these unit tests test
+ * for client requests to an offline server.
+ */
 public class FunctionalTestingInactiveServer {
 
     // CONNECTED_USER_MANGER
     @Test
     public void connectedUserListTest(){
-        connectedUserManager cu = new connectedUserManager();
+        ConnectedUserManager cu = new ConnectedUserManager();
         cu.addUser("Q");
         cu.addUser("W");
         cu.addUser("E");

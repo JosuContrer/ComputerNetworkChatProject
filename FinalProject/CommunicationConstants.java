@@ -1,9 +1,12 @@
 package FinalProject;
 
 /**
- * Client-Server Constants for Actions and Messaging
+ * Client-Server Constants for Actions, Messaging, and System.
  */
 public class CommunicationConstants {
+
+    // CONNECTION SOCKET
+    public static final int CONNECTION_SOCKET = 59091;
 
     // Communication Constants
     public static final int USER_NOT_FOUND = 5;
@@ -19,5 +22,6 @@ public class CommunicationConstants {
 
     // Client Constants
     public static final String INVALID_USERNAME = "INVALID USERNAME";
+    public static final int HEART_BEAT_INTERVAL = 4000;
 
 }

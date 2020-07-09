@@ -2,7 +2,7 @@ package FinalProject.Backend;
 
 import java.util.LinkedList;
 
-public class connectedUserManager {
+public class ConnectedUserManager {
 
     private static LinkedList<String> userList = new LinkedList<>();
 

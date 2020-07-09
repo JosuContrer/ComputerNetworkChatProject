@@ -7,12 +7,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.util.Scanner;
 
 /**
- * A Client can receive and send messages at the same time.
- * This is done with the use of individual threads: one for
- * receiving and another for sending messages.
+ * Client abstract class that initializes the socket
+ * connection request with the Server and initializes
+ * the I/O streams for the client to the server.
  */
 public class Client {
 
@@ -21,6 +20,7 @@ public class Client {
     private Socket socketC = null;
     private InetAddress ip = null;
     public boolean loggedIn = false;
+
     // ->Client IO streams
     public DataInputStream inputC = null;
     public DataOutputStream outputC = null;
@@ -30,7 +30,8 @@ public class Client {
     }
 
     public Client(String userName, Integer serverSocket) throws Exception {
-        if(userName.length() >= 1) { // Check for a blank username
+        if(userName.length() >= 1) // Check for a blank username
+        {
             try {
                 this.ip = InetAddress.getLocalHost();               // Get the local host IP Address
                 this.socketC = new Socket(this.ip, serverSocket);   // Create Client socket given ip and server socket
@@ -38,11 +39,31 @@ public class Client {
                 this.outputC = new DataOutputStream(this.socketC.getOutputStream());
                 this.userName = userName;
                 this.loggedIn = true;
-            } catch (IOException e) {
+                this.outputC.writeUTF(userName); // Send to server for username validation
+            } catch (IOException e) { // Error connecting with server
                 throw new IOException(CommunicationConstants.SERVER_FAILED);
             }
-        } else{
+        }
+        else
+        {
             throw new Exception(CommunicationConstants.INVALID_USERNAME);
+        }
+    }
+
+    /**
+     * Closes client sockets and streams.
+     */
+    public void close(){
+        try
+        {
+            loggedIn = false;
+            socketC.close();
+            inputC.close();
+            outputC.close();
+        }
+        catch (IOException e)
+        {
+            System.out.println("Client Forced Close");
         }
     }
 
@@ -54,30 +75,4 @@ public class Client {
         this.userName = userName;
     }
 
-    /**
-     * Closes client sockets and streams
-     */
-    public void close(){
-        try {
-            loggedIn = false;
-            socketC.close();
-            inputC.close();
-            outputC.close();
-        }catch (IOException e){
-            System.out.println("Client Forced Close");
-        }
-    }
-
-    public static void main(String[] args){
-        System.out.println("Enter username: ");
-        Scanner scn = new Scanner(System.in);
-        String userName = scn.nextLine();
-        try {
-            Client c = new Client(userName, 5056);
-        }catch (IOException e){
-            e.printStackTrace();
-        }catch (Exception u){ // error with username
-            u.printStackTrace();
-        }
-    }
 }

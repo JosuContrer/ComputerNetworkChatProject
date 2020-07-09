@@ -8,18 +8,18 @@ import java.io.IOException;
 import java.net.Socket;
 
 /**
- * This is a helper class that handles clients with threads
- * to make sure they are still connected. If not heartbeat is received
- * then that means the Client disconnected and then we get them off the
- * connected list.
+ * This Client Handler class is a helper class that implements the
+ * runnable interface for the multithreading of the chat application.
+ * In this class the client is set up and it handles the requests made
+ * by the client to the Server.
  */
 public class ClientHandler implements Runnable{
 
-    // Class variables
     // ->Client identification elements
     private String userName = null;
     private Socket socket = null;
     private boolean isLoggedIn = false;
+
     // ->Client IO streams
     private DataOutputStream outputC = null;
     private DataInputStream inputC = null;
@@ -40,7 +40,8 @@ public class ClientHandler implements Runnable{
     public void run(){
         String received = null;
         while(true){
-            try {
+            try
+            {
                 // Client received inputStream
                 received = inputC.readUTF();
 
@@ -49,7 +50,8 @@ public class ClientHandler implements Runnable{
                 Integer controlID = Integer.parseInt(packet[0]);
 
                 // -> HANDLE PACKET FROM SENT FROM CLIENT
-                switch (controlID) {
+                switch (controlID)
+                {
                     case CommunicationConstants.LOG_OUT: // Logout request
                         this.isLoggedIn = false;
                         disconnectClient();
@@ -78,10 +80,15 @@ public class ClientHandler implements Runnable{
                         this.outputC.writeUTF(CommunicationConstants.CONNECTED_USERS_REQUEST + "@" + Server.connectedUserManager.toString());
                         break;
                 }
-            } catch (IOException e){
-                try {
+            }
+            catch (IOException e)
+            {
+                try
+                {
                     disconnectClient();
-                }catch (IOException i){
+                }
+                catch (IOException i)
+                {
                     System.out.println("Error closing socket");
                     i.printStackTrace();
                     break;
@@ -91,9 +98,12 @@ public class ClientHandler implements Runnable{
             }
         }
         // When the client exits
-        try{
+        try
+        {
             disconnectClient();
-        }catch (IOException i){
+        }
+        catch (IOException i)
+        {
             i.printStackTrace();
         }
     }
