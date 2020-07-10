@@ -15,11 +15,9 @@ import java.net.InetAddress;
 import java.net.Socket;
 
 /**
- * Client abstract class that initializes the socket
- * connection request with the Server and initializes
- * the I/O streams for the client to the server.
+ * IMPORTANT: This client is only used for testing purposes
  */
-public class Client {
+public class ClientTest {
 
     // ->Client identification elements
     private String userName = null;
@@ -31,11 +29,13 @@ public class Client {
     public DataInputStream inputC = null;
     public DataOutputStream outputC = null;
 
-    public Client(){
+    public boolean result = false;
+
+    public ClientTest(){
         this.loggedIn = false;
     }
 
-    public Client(String userName, Integer serverSocket) throws Exception {
+    public ClientTest(String userName, Integer serverSocket) throws Exception {
         if(userName.length() >= 1) // Check for a blank username
         {
             try {
@@ -80,4 +80,36 @@ public class Client {
     public void setUserName(String userName){
         this.userName = userName;
     }
+
+
+    public boolean setThreads(){
+
+        Runnable receiveMR = new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        String[] packet = inputC.readUTF().split("@", 3);
+                        if(Integer.parseInt(packet[0]) == CommunicationConstants.WHISPER_MESSAGE){
+                            result = true;
+                        }else{
+                            result = false;
+                        }
+                        return;
+                    } catch (IOException e) {
+                        result = false;
+                        return;
+                    }
+                }
+            }
+
+        };
+
+        // Start thread
+        Thread receiveMT = new Thread(receiveMR);
+        receiveMT.start();
+
+        return result;
+    }
+
 }

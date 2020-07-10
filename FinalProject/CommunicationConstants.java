@@ -24,4 +24,7 @@ public class CommunicationConstants {
     public static final String INVALID_USERNAME = "INVALID USERNAME";
     public static final int HEART_BEAT_INTERVAL = 4000;
 
+    // Results
+    public String results = "";
+
 }

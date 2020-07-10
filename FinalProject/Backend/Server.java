@@ -66,7 +66,7 @@ public class Server {
                 }
                 catch (IOException e)
                 {
-                    System.out.println("Client Connection Failed");
+                    System.out.println("Client Connection Failed-------------------");
                     clientConnectionS = false;
                 }
 

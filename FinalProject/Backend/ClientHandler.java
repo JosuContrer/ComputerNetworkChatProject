@@ -88,7 +88,7 @@ public class ClientHandler implements Runnable{
                 catch (IOException i)
                 {
                     System.out.println("Error closing socket");
-                    i.printStackTrace();
+                    //i.printStackTrace();
                     break;
                 }
                 System.out.println("Client has disconnected: " + this.userName);
@@ -102,7 +102,6 @@ public class ClientHandler implements Runnable{
         }
         catch (IOException i)
         {
-            i.printStackTrace();
         }
     }
 

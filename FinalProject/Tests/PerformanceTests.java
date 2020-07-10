@@ -2,32 +2,19 @@ package FinalProject.Tests;
 
 import FinalProject.Frontend.Client;
 import FinalProject.Frontend.CommunicationConstants;
-import org.junit.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Scanner;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 
 /**
- *              Graph
- *  yClientGrowth
- *  ^
- *  |
- *  |
- *  |
- *  |
- *  |
- *  ---------------> xIntervals
+ * Performance tests for server
  */
 public class PerformanceTests {
 
-    ArrayList<String> userNames = new ArrayList<>();
+    public static LinkedList<String> userNames = new LinkedList<>();
 
     /**
      * Loads unique userNames form file provided.
@@ -35,7 +22,7 @@ public class PerformanceTests {
      */
     public void loadUserNames() throws FileNotFoundException
     {
-        Scanner sc = new Scanner(new File("C:\\Users\\JosuD\\Documents\\Compsuter Science Grad Courses\\E1 20\\CS 513 - Computer Networks\\project\\src\\FinalProject\\Tests\\words.english.txt"));
+        Scanner sc = new Scanner(new File("file path"));
 
         while (sc.hasNext())
         {
@@ -45,7 +32,12 @@ public class PerformanceTests {
         sc.close();
     }
 
-    public void serverRunTime(int xIntervals, int yClientGrowth) throws Exception {
+    /**
+     * Worst Case is based on the data structure that runs the client handler
+     * @param xIntervals
+     * @throws FileNotFoundException
+     */
+    public void serverRunTime(int xIntervals) throws FileNotFoundException {
 
         // Garbage collector before test
         System.gc();
@@ -57,9 +49,6 @@ public class PerformanceTests {
         String firstUserName = userNames.get(0);
         String lastUserName = "";
 
-        Client firsClient = new Client("transfer", CommunicationConstants.CONNECTION_SOCKET);
-        Client lastClient = null;
-
         // Keep track of failed connections
         double connectionFailed = 0;
 
@@ -68,21 +57,15 @@ public class PerformanceTests {
 
         for(int i = 0; i < xIntervals; i++)
         {
-            for(int o = 0; o < yClientGrowth; o++)
-            { // Add clients to Server
-                lastUserName = userNames.get(i) + Integer.toString(o);
-                try {
-                    lastClient = new Client(lastUserName, CommunicationConstants.CONNECTION_SOCKET);
-                }catch (Exception e){
-                    connectionFailed++;
-                }
-            }
-
             // Communicate a message from first to last take time
             double start = System.currentTimeMillis();
 
-            firsClient.outputC.writeUTF(CommunicationConstants.WHISPER_MESSAGE + "@" + lastUserName + "@You get my message");
-            assertEquals("You get my message", lastClient.inputC.readUTF());
+            // Worst case for data structure
+            for(String user: userNames){
+                if(user != userNames.get(i)){
+                    break;
+                }
+            }
 
             double elapsedTime = ((System.currentTimeMillis() - start) / 1000.0);
             runTimes.push(elapsedTime);
@@ -93,7 +76,54 @@ public class PerformanceTests {
         System.out.println("Failed Connects: " + connectionFailed);
     }
 
+    /**
+     * Connect clients consecutively to server.
+     * @param numberOfClients
+     * @throws Exception
+     */
+    public void serverFails(int numberOfClients) throws Exception {
+
+        // Garbage collector before test
+        System.gc();
+
+        loadUserNames();
+        String lastUserName;
+        // Keep track of failed connections
+        double connectionFailed = 0;
+        double connectionSucc = 0;
+        double stringLength = 0;
+
+        for(int o = 0; o < numberOfClients; o++)
+        { // Add clients to Server
+            if(o%10 == 0){
+                System.out.println("Total Clients Connected " + o);
+                System.out.println("Connection Successful: " + connectionSucc);
+                System.out.println("Failed Connects: " + connectionFailed);
+            }
+            lastUserName = userNames.get(o);
+            try {
+                stringLength += lastUserName.length();
+               new Client(lastUserName, CommunicationConstants.CONNECTION_SOCKET);
+               connectionSucc++;
+            }catch (Exception e){
+                connectionFailed++;
+            }
+        }
+
+        System.out.println("String Length: " + stringLength);
+    }
+
     public static void main(String[] args){
+
+        PerformanceTests p = new PerformanceTests();
+        try {
+            // Setup tests as described in paper
+            p.serverFails(5);
+            //p.serverFails(100000);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        while(true){}
 
     }
     
